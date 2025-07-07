@@ -34,6 +34,7 @@ export default function Home() {
   const [transparent, setTransparent] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const [referrer, setReferrer] = useState('');
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     // Fetch available models from Pollinations API
@@ -42,6 +43,26 @@ export default function Home() {
       .then(data => setModels(data))
       .catch(() => setModels(['flux', 'gptimage', 'kontext']));
   }, []);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  // Load generatedImages from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('generatedImages');
+    if (saved) {
+      // Parse and revive Date objects
+      const parsed = JSON.parse(saved).map((img: any) => ({
+        ...img,
+        timestamp: new Date(img.timestamp),
+      }));
+      setGeneratedImages(parsed);
+    }
+  }, []);
+
+  // Save generatedImages to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('generatedImages', JSON.stringify(generatedImages));
+  }, [generatedImages]);
 
   const promptSuggestions = [
     'A futuristic cityscape at sunset with flying cars',
@@ -123,26 +144,19 @@ export default function Home() {
     setPrompt(suggestion);
   };
 
+  // Remove a single image by id
+  const handleRemoveImage = (id: string) => {
+    setGeneratedImages(prev => prev.filter(img => img.id !== id));
+  };
+
+  // Clear all images
+  const handleClearAll = () => {
+    setGeneratedImages([]);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
-      {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                AI ArtGen
-              </span>
-            </div>
-            <Badge variant="secondary" className="text-xs">
-              Beta
-            </Badge>
-          </div>
-        </div>
-      </header>
+      {/* Header - removed, now in layout */}
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
@@ -305,11 +319,19 @@ export default function Home() {
         {/* Generated Images Gallery */}
         {generatedImages.length > 0 && (
           <div className="max-w-6xl mx-auto">
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Your Generated Images</h2>
-              <p className="text-gray-600">Click on any image to download it</p>
+            <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Your Generated Images</h2>
+                <p className="text-gray-600">Click on any image to download it</p>
+              </div>
+              <Button
+                variant="destructive"
+                onClick={handleClearAll}
+                className="self-start md:self-auto"
+              >
+                Clear All
+              </Button>
             </div>
-            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {generatedImages.map((image) => (
                 <Card key={image.id} className="group shadow-lg border-0 bg-white/80 backdrop-blur-sm overflow-hidden hover:shadow-xl transition-all duration-300">
@@ -320,27 +342,34 @@ export default function Home() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <div className="absolute bottom-4 left-4 right-4 translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => handleDownload(image.url, image.prompt)}
-                          className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white border-white/30"
-                        >
-                          <Download className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => handleCopyPrompt(image.prompt)}
-                          className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white border-white/30"
-                        >
-                          {copiedPrompt === image.prompt ? (
-                            <Check className="w-4 h-4" />
-                          ) : (
-                            <Copy className="w-4 h-4" />
-                          )}
-                        </Button>
-                      </div>
+                    <div className="absolute bottom-4 left-4 right-4 translate-y-4 group-hover:translate-y-0 transition-transform duration-300 flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleDownload(image.url, image.prompt)}
+                        className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white border-white/30"
+                      >
+                        <Download className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleCopyPrompt(image.prompt)}
+                        className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white border-white/30"
+                      >
+                        {copiedPrompt === image.prompt ? (
+                          <Check className="w-4 h-4" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleRemoveImage(image.id)}
+                        className="bg-red-600/80 hover:bg-red-700/90 text-white border-white/30"
+                        title="Remove image"
+                      >
+                        ×
+                      </Button>
                     </div>
                   </div>
                   <CardContent className="p-4">
@@ -349,7 +378,7 @@ export default function Home() {
                     </p>
                     <div className="flex items-center justify-between text-xs text-gray-500">
                       <span>
-                        {image.timestamp.toLocaleTimeString()}
+                        {mounted ? new Date(image.timestamp).toLocaleTimeString() : ''}
                       </span>
                       <Button
                         variant="ghost"
@@ -388,7 +417,7 @@ export default function Home() {
       <footer className="border-t bg-white/80 backdrop-blur-sm mt-16">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center text-gray-600">
-            <p>© 2025 AI ArtGen. Powered by advanced AI technology.</p>
+            <p>© 2025 ansarigen. Powered by advanced AI technology.</p>
           </div>
         </div>
       </footer>
