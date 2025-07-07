@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,6 +21,27 @@ export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null);
+  // Pollinations options state
+  const [models, setModels] = useState<string[]>([]);
+  const [model, setModel] = useState('flux');
+  const [width, setWidth] = useState(1024);
+  const [height, setHeight] = useState(1024);
+  const [seed, setSeed] = useState<number | ''>('');
+  const [nologo, setNologo] = useState(true);
+  const [enhance, setEnhance] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [safe, setSafe] = useState(false);
+  const [transparent, setTransparent] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
+  const [referrer, setReferrer] = useState('');
+
+  useEffect(() => {
+    // Fetch available models from Pollinations API
+    fetch('https://image.pollinations.ai/models')
+      .then(res => res.json())
+      .then(data => setModels(data))
+      .catch(() => setModels(['flux', 'gptimage', 'kontext']));
+  }, []);
 
   const promptSuggestions = [
     'A futuristic cityscape at sunset with flying cars',
@@ -35,31 +56,35 @@ export default function Home() {
       toast.error('Please enter a prompt to generate an image');
       return;
     }
-
     setIsGenerating(true);
     try {
-      // Simulate API call - replace with actual API integration
+      const body: any = {
+        prompt,
+        model,
+        width,
+        height,
+        nologo,
+        enhance,
+        private: isPrivate,
+        safe,
+      };
+      if (seed !== '') body.seed = seed;
+      if (transparent && model === 'gptimage') body.transparent = true;
+      if (imageUrl) body.image = imageUrl;
+      if (referrer) body.referrer = referrer;
       const response = await fetch('/api/generate-image', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate image');
-      }
-
+      if (!response.ok) throw new Error('Failed to generate image');
       const data = await response.json();
-      
       const newImage: GeneratedImage = {
         id: Date.now().toString(),
         url: data.imageUrl,
         prompt: prompt,
         timestamp: new Date(),
       };
-
       setGeneratedImages(prev => [newImage, ...prev]);
       toast.success('Image generated successfully!');
     } catch (error) {
@@ -155,6 +180,57 @@ export default function Home() {
                 <div className="flex items-center justify-between text-sm text-gray-500">
                   <span>{prompt.length}/500 characters</span>
                   <span>Be specific for better results</span>
+                </div>
+              </div>
+              {/* Pollinations Options */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Model</label>
+                  <select className="w-full border rounded p-2" value={model} onChange={e => setModel(e.target.value)}>
+                    {models.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Width</label>
+                  <input type="number" className="w-full border rounded p-2" value={width} min={64} max={2048} step={8} onChange={e => setWidth(Number(e.target.value))} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Height</label>
+                  <input type="number" className="w-full border rounded p-2" value={height} min={64} max={2048} step={8} onChange={e => setHeight(Number(e.target.value))} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Seed (optional)</label>
+                  <input type="number" className="w-full border rounded p-2" value={seed} min={0} max={9999999} onChange={e => setSeed(e.target.value === '' ? '' : Number(e.target.value))} placeholder="Random if empty" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" checked={nologo} onChange={e => setNologo(e.target.checked)} id="nologo" />
+                  <label htmlFor="nologo" className="text-sm">No Logo</label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" checked={enhance} onChange={e => setEnhance(e.target.checked)} id="enhance" />
+                  <label htmlFor="enhance" className="text-sm">Enhance Prompt</label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" checked={isPrivate} onChange={e => setIsPrivate(e.target.checked)} id="private" />
+                  <label htmlFor="private" className="text-sm">Private</label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" checked={safe} onChange={e => setSafe(e.target.checked)} id="safe" />
+                  <label htmlFor="safe" className="text-sm">Safe (strict NSFW filter)</label>
+                </div>
+                {model === 'gptimage' && (
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" checked={transparent} onChange={e => setTransparent(e.target.checked)} id="transparent" />
+                    <label htmlFor="transparent" className="text-sm">Transparent (gptimage only)</label>
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Image-to-Image URL (optional)</label>
+                  <input type="url" className="w-full border rounded p-2" value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://example.com/image.jpg" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Referrer (optional)</label>
+                  <input type="text" className="w-full border rounded p-2" value={referrer} onChange={e => setReferrer(e.target.value)} placeholder="mywebapp.com" />
                 </div>
               </div>
 

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt } = await request.json();
+    const body = await request.json();
+    const { prompt, model, width, height, seed, nologo, enhance, private: isPrivate, safe, transparent, image, referrer } = body;
 
     if (!prompt) {
       return NextResponse.json(
@@ -19,8 +20,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate image using Pollinations AI
-    const imageResponse = await fetch(`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${Math.floor(Math.random() * 1000000)}`, {
+    // Build query params
+    const params = new URLSearchParams();
+    if (model) params.append('model', model);
+    if (width) params.append('width', width);
+    if (height) params.append('height', height);
+    if (seed !== undefined && seed !== '') params.append('seed', seed);
+    if (nologo !== undefined) params.append('nologo', nologo ? 'true' : 'false');
+    if (enhance) params.append('enhance', 'true');
+    if (isPrivate) params.append('private', 'true');
+    if (safe) params.append('safe', 'true');
+    if (transparent && model === 'gptimage') params.append('transparent', 'true');
+    if (image) params.append('image', image);
+    if (referrer) params.append('referrer', referrer);
+
+    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?${params.toString()}`;
+
+    const imageResponse = await fetch(pollinationsUrl, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
