@@ -41,7 +41,7 @@ export default function AudioGenPage() {
     setError(null);
     setAudioUrl(null);
     try {
-      const encodedPrompt = encodeURIComponent(prompt);
+      const encodedPrompt = encodeURIComponent("Say: " + prompt);
       const url = `https://text.pollinations.ai/${encodedPrompt}?model=openai-audio&voice=${voice}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error("Failed to generate audio");
