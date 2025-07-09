@@ -35,6 +35,8 @@ export default function Home() {
   const [imageUrl, setImageUrl] = useState('');
   const [referrer, setReferrer] = useState('');
   const [mounted, setMounted] = useState(false);
+  const [temperature, setTemperature] = useState(1.0);
+  const [randomizeSeed, setRandomizeSeed] = useState(false);
 
   useEffect(() => {
     // Fetch available models from Pollinations API
@@ -78,6 +80,11 @@ export default function Home() {
       return;
     }
     setIsGenerating(true);
+    let usedSeed = seed;
+    if (randomizeSeed) {
+      usedSeed = Math.floor(Math.random() * 10000000);
+      setSeed(usedSeed);
+    }
     try {
       const body: any = {
         prompt,
@@ -88,8 +95,9 @@ export default function Home() {
         enhance,
         private: isPrivate,
         safe,
+        temperature,
       };
-      if (seed !== '') body.seed = seed;
+      if (usedSeed !== '') body.seed = usedSeed;
       if (transparent && model === 'gptimage') body.transparent = true;
       if (imageUrl) body.image = imageUrl;
       if (referrer) body.referrer = referrer;
@@ -215,6 +223,23 @@ export default function Home() {
                 <div>
                   <label className="text-sm font-medium text-gray-700">Seed (optional)</label>
                   <input type="number" className="w-full border rounded p-2" value={seed} min={0} max={9999999} onChange={e => setSeed(e.target.value === '' ? '' : Number(e.target.value))} placeholder="Random if empty" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Temperature</label>
+                  <input
+                    type="range"
+                    min={0.1}
+                    max={2.0}
+                    step={0.01}
+                    value={temperature}
+                    onChange={e => setTemperature(Number(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="text-xs text-gray-500">{temperature.toFixed(2)}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" checked={randomizeSeed} onChange={e => setRandomizeSeed(e.target.checked)} id="randomize-seed" />
+                  <label htmlFor="randomize-seed" className="text-sm">Randomize Seed</label>
                 </div>
                 <div className="flex items-center gap-2">
                   <input type="checkbox" checked={nologo} onChange={e => setNologo(e.target.checked)} id="nologo" />

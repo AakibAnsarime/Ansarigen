@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { prompt, model, width, height, seed, nologo, enhance, private: isPrivate, safe, transparent, image, referrer } = body;
+    const { prompt, model, width, height, seed, nologo, enhance, private: isPrivate, safe, transparent, image, referrer, temperature } = body;
 
     if (!prompt) {
       return NextResponse.json(
@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
     if (transparent && model === 'gptimage') params.append('transparent', 'true');
     if (image) params.append('image', image);
     if (referrer) params.append('referrer', referrer);
+    if (temperature !== undefined) params.append('temperature', temperature);
 
     const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?${params.toString()}`;
 
